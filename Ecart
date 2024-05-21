@@ -1,0 +1,47 @@
+from Contrat_2 import *
+
+def coupe(jeu, ecart):
+    nombre_couleurs = []
+    for i in couleurs[1:]:
+        nombre_couleurs.append(len(jeu[i]))
+    nombre_couleurs_min = min(nombre_couleurs)  # CHANGER MODE DE CHOIX DE COULEUR DE COUPE
+    couleur_coupe = couleurs[1+nombre_couleurs.index(nombre_couleurs_min)]
+    if len(ecart) + nombre_couleurs_min > 6:
+        pass
+    else:
+        for valeur in jeu[couleur_coupe]:
+            ecart.append({"Couleur": couleur_coupe, "Valeur": valeur})
+        jeu[couleur_coupe] = []
+    ecart = trier_jeu(ecart)
+    afficher(jeu)
+    afficher(ecart)
+    return jeu, ecart
+
+def ecart(jeu, chien):
+    jeu = fusionner(jeu, chien)
+    ecart = []
+    atouts = nombre_atouts(jeu)
+    if atouts <= 7:
+        pass
+    elif atouts == 8:
+        pass
+    else:
+        pass
+    
+def lancer_partie():
+    jeu = creer_jeu()
+    jeu = melanger_jeu(jeu)
+    jeu = distribuer(jeu)
+    entame = randint(0, 3)
+    print("Le joueur ", entame+1, " entame.\n")
+    for i in range(5):
+        jeu[i] = trier_jeu(jeu[i])
+        afficher(jeu[i])
+    contrat, attaque = preneur(jeu, entame)
+    if attaque == 0:
+        print("Personne ne prend.")
+    else:
+        print("Le joueur " + str(attaque) + " fait une " + contrat + ".")
+        return coupe(fusionner(jeu[attaque-1], jeu[4]), [])
+
+print(lancer_partie())
