@@ -1,0 +1,333 @@
+from random import shuffle
+
+# Base
+
+couleurs = ["Atouts", "Pique", "Coeur", "Carreau", "Trèfle"]
+habilles = {11: "Valet", 12: "Cavalier", 13: "Dame", 14: "Roi"}
+
+def creer_jeu():
+    jeu = []
+    for i in couleurs[1:]:
+        for j in [i for i in range(1, 15)]:
+            carte = {"Couleur": i, "Valeur": j}
+            jeu.append(carte)
+    for i in [i for i in range(22)]:
+        carte = {"Couleur": "Atouts", "Valeur": i}
+        jeu.append(carte)
+    return jeu
+
+def melanger_jeu(jeu):
+    shuffle(jeu)
+    return jeu
+
+def distribuer(jeu):
+    joueur1 = []
+    joueur2 = []
+    joueur3 = []
+    joueur4 = []
+    chien = []
+    for i in range(0, 78, 13):
+        for j in range(3):
+            joueur1.append(jeu[i+j])
+            joueur2.append(jeu[i+j+3])
+            joueur3.append(jeu[i+j+6])
+            joueur4.append(jeu[i+j+9])
+        chien.append(jeu[i+12])
+    return [joueur1, joueur2, joueur3, joueur4, chien]
+
+def trier_jeu(jeu):
+    jeu_trie = {"Atouts": [], "Pique": [], "Coeur": [], "Carreau": [], "Trèfle": []}
+    for carte in jeu:
+        jeu_trie[carte["Couleur"]].append(carte["Valeur"])
+    for i in couleurs:
+        jeu_trie[i].sort()
+    return jeu_trie
+
+def fusionner(jeu1, jeu2):
+    jeu = {"Atouts": [], "Pique": [], "Coeur": [], "Carreau": [], "Trèfle": []}
+    for i in couleurs:
+        jeu[i] = jeu1[i] + jeu2[i]
+        jeu[i].sort()
+    return jeu
+
+def afficher(jeu):
+    
+    def afficher_carte(couleurs, valeur, premier=False):
+        if not premier:
+            print(", ", end="")
+        if couleurs == "Atouts" and valeur == 0:
+            print("Excuse", end="")
+        elif couleurs != "Atouts" and 10 < valeur < 15:
+            print(habilles[valeur], end="")
+        else:
+            print(valeur, end="")
+    
+    for i in couleurs:
+        print(i, ": ", end="")
+        if jeu[i] != []:
+            afficher_carte(i, jeu[i][0], True)
+            for element in jeu[i][1:]:
+                afficher_carte(i, element)        
+        print(".")
+    print()
+
+# Contrat version 1
+
+def nombre_bouts(jeu):
+    nb = 0
+    if 0 in jeu["Atouts"]:
+        nb += 1
+    if 1 in jeu["Atouts"]:
+        nb += 1
+    if 21 in jeu["Atouts"]:
+        nb += 1
+    return nb
+
+def premier_critere(jeu):
+    return nombre_bouts(jeu) > 1
+
+def deuxieme_critere(jeu):
+    atouts = jeu["Atouts"]
+    return len(atouts) >= 7
+
+def troisieme_critere(jeu):
+    for i in couleurs[1:]:
+        if 14 in jeu[i]:
+            return True
+    return False
+
+def prendre(jeu):
+    return (premier_critere(jeu) and deuxieme_critere(jeu)) or (premier_critere(jeu) and troisieme_critere(jeu)) or (deuxieme_critere(jeu) and troisieme_critere(jeu))
+
+def faiblesse(jeu):
+    coupes = 0
+    singlettes = 0
+    for i in couleurs[1:]:
+        if len(jeu[i]) == 0:
+            coupes += 1
+        elif len(jeu[i]) == 1:
+            singlettes += 1
+    return [coupes, singlettes]        
+
+def compter_points(jeu):
+    points = 0
+    faiblesses = faiblesse(jeu)
+    if 1 in jeu["Atouts"]:
+        if faiblesses != [0, 0]:
+            points += 6
+        else:
+            return -1000
+    if 0 in jeu["Atouts"]:
+        points += 4
+    if 21 in jeu["Atouts"]:
+        points += 6
+        marqueur = 20
+        while marqueur in jeu["Atouts"]:
+            points += 2
+            marqueur -= 1
+    for i in couleurs[1:]:
+        if 14 in jeu[i]:
+            if 13 in jeu[i]:
+                points += 11
+            else:
+                points += 6
+        elif 13 in jeu[i] and 12 in jeu[i]:
+            points += 5
+    points += faiblesses[0] * 8
+    points += faiblesses[1] * 6
+    return points
+
+def contrat(jeu):
+    if not prendre(jeu):
+        return "Passe"
+    points = compter_points(jeu)
+    but = {0: 56, 1: 51, 2: 41, 3: 36}
+    but = but[nombre_bouts(jeu)]
+    points = points - but
+    if points >= 0:
+        return "Garde Contre"
+    elif points >= -3:
+        return "Garde Sans"
+    else:
+        return "Garde"
+    
+def preneur(jeu):
+    contrats = []
+    for i in range(4):
+        prend = contrat(jeu[i])
+        if prend != "Passe":
+            contrats.append((prend, i + 1))
+    if len(contrats) == 1:
+        return contrats[0]
+    elif len(contrats) == 0:
+        return ("Passe", 0)
+    elif contrats[0][0] == contrats[1][0]:
+        return contrats[0]
+    else:
+        for i in range(len(contrats)):
+            if contrats[i][0] == "Garde Contre":
+                return contrats[i]
+        for i in range(len(contrats)):
+            if contrats[i][0] == "Garde Sans":
+                return contrats[i]
+
+def lancer_partie():
+    jeu = creer_jeu()
+    jeu = melanger_jeu(jeu)
+    jeu = distribuer(jeu)
+    for i in range(5):
+        jeu[i] = trier_jeu(jeu[i])
+        afficher(jeu[i])
+        print(compter_points(jeu[i]))
+    return preneur(jeu[:5])
+
+# Contrat version 2
+
+def nombre_atouts(jeu):
+    return len(jeu["Atouts"])
+
+def compter_habilles_couleur(jeu, couleur):
+    compteur = 0
+    for habille in habilles:
+        if habille in jeu[couleur]:
+            compteur += habille - 9
+    return compteur
+
+def compter_habilles(jeu):
+    compteur = 0
+    for couleur in couleurs[1:]:
+        compteur += compter_habilles_couleur(jeu, couleur)
+    return compteur
+
+def faiblesse(jeu):
+    coupes = 0
+    singlettes = 0
+    for i in couleurs[1:]:
+        if len(jeu[i]) == 0:
+            coupes += 1
+        elif len(jeu[i]) == 1:
+            singlettes += 1
+    return [coupes, singlettes]        
+
+
+def compter_points(jeu):
+    points = 0
+    faiblesses = faiblesse(jeu)
+    if 1 in jeu["Atouts"]:
+        if faiblesses != [0, 0]:
+            points += 6
+        else:
+            return -1000
+    if 0 in jeu["Atouts"]:
+        points += 4
+    if 21 in jeu["Atouts"]:
+        points += 6
+        marqueur = 20
+        while marqueur in jeu["Atouts"]:
+            points += 2
+            marqueur -= 1
+    for i in couleurs[1:]:
+        if 14 in jeu[i]:
+            if 13 in jeu[i]:
+                points += 11
+            else:
+                points += 6
+        elif 13 in jeu[i] and 12 in jeu[i]:
+            points += 5
+    points += faiblesses[0] * 8
+    points += faiblesses[1] * 6
+    return points
+
+def contrat(jeu):
+    bouts = nombre_bouts(jeu)
+    atouts = nombre_atouts(jeu)
+    points = compter_habilles(jeu)
+    atouts_necessaires = {0: 8, 1: 7, 2: 7, 3: 6}
+    points_necessaires = {0: 15, 1: 10, 2: 8, 3: 5}
+    points_ = compter_points(jeu)
+    but = {0: 56, 1: 51, 2: 41, 3: 36}
+    but = but[nombre_bouts(jeu)]
+    points_ = points_ - but
+    if points_ >= 0:
+        return "Garde Contre"
+    elif points_ >= -3:
+        return "Garde Sans"
+    else:
+        if atouts < atouts_necessaires[bouts]-1:
+            return "Passe"
+        elif atouts < atouts_necessaires[bouts]:
+            if points > points_necessaires[bouts]:
+                return "Petite"
+            else:
+                return "Passe"
+        else:
+            if points > points_necessaires[bouts] - 5:
+                return "Garde"
+            else:
+                return "Passe"
+
+def preneur(jeu, entame):
+    contrats = {"Passe": 0, "Petite": 1, "Garde": 2, "Garde Sans": 3, "Garde Contre": 4}
+    attaque = ("Passe", 0)
+    for i in [entame, (entame+1)%4, (entame+2)%4, (entame+3)%4]:
+        prendre = contrat(jeu[i])
+        if contrats[prendre] > contrats[attaque[0]]:
+            attaque = (prendre, i+1)
+    return attaque
+
+def lancer_partie():
+    jeu = creer_jeu()
+    jeu = melanger_jeu(jeu)
+    jeu = distribuer(jeu)
+    for i in range(5):
+        jeu[i] = trier_jeu(jeu[i])
+        afficher(jeu[i])
+    return preneur(jeu[:5], randint(0, 3))
+
+# Ecart (non terminé)
+
+def coupe(jeu, ecart):
+    nombre_couleurs = []
+    for i in couleurs[1:]:
+        nombre_couleurs.append(len(jeu[i]))
+    nombre_couleurs_min = min(nombre_couleurs)  # CHANGER MODE DE CHOIX DE COULEUR DE COUPE
+    couleur_coupe = couleurs[1+nombre_couleurs.index(nombre_couleurs_min)]
+    if len(ecart) + nombre_couleurs_min > 6:
+        pass
+    else:
+        for valeur in jeu[couleur_coupe]:
+            ecart.append({"Couleur": couleur_coupe, "Valeur": valeur})
+        jeu[couleur_coupe] = []
+    ecart = trier_jeu(ecart)
+    afficher(jeu)
+    afficher(ecart)
+    return jeu, ecart
+
+def ecart(jeu, chien):
+    jeu = fusionner(jeu, chien)
+    ecart = []
+    atouts = nombre_atouts(jeu)
+    if atouts <= 7:
+        pass
+    elif atouts == 8:
+        pass
+    else:
+        pass
+    
+def lancer_partie():
+    jeu = creer_jeu()
+    jeu = melanger_jeu(jeu)
+    jeu = distribuer(jeu)
+    entame = randint(0, 3)
+    print("Le joueur ", entame+1, " entame.\n")
+    for i in range(5):
+        jeu[i] = trier_jeu(jeu[i])
+        afficher(jeu[i])
+    contrat, attaque = preneur(jeu, entame)
+    if attaque == 0:
+        print("Personne ne prend.")
+    else:
+        print("Le joueur " + str(attaque) + " fait une " + contrat + ".")
+        return coupe(fusionner(jeu[attaque-1], jeu[4]), [])
+
+print(lancer_partie())
