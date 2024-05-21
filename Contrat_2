@@ -1,0 +1,115 @@
+from Base import *
+from random import randint
+
+def nombre_bouts(jeu):
+    nb = 0
+    if 0 in jeu["Atouts"]:
+        nb += 1
+    if 1 in jeu["Atouts"]:
+        nb += 1
+    if 21 in jeu["Atouts"]:
+        nb += 1
+    return nb
+
+def nombre_atouts(jeu):
+    return len(jeu["Atouts"])
+
+def compter_habilles_couleur(jeu, couleur):
+    compteur = 0
+    for habille in habilles:
+        if habille in jeu[couleur]:
+            compteur += habille - 9
+    return compteur
+
+def compter_habilles(jeu):
+    compteur = 0
+    for couleur in couleurs[1:]:
+        compteur += compter_habilles_couleur(jeu, couleur)
+    return compteur
+
+def faiblesse(jeu):
+    coupes = 0
+    singlettes = 0
+    for i in couleurs[1:]:
+        if len(jeu[i]) == 0:
+            coupes += 1
+        elif len(jeu[i]) == 1:
+            singlettes += 1
+    return [coupes, singlettes]        
+
+
+def compter_points(jeu):
+    points = 0
+    faiblesses = faiblesse(jeu)
+    if 1 in jeu["Atouts"]:
+        if faiblesses != [0, 0]:
+            points += 6
+        else:
+            return -1000
+    if 0 in jeu["Atouts"]:
+        points += 4
+    if 21 in jeu["Atouts"]:
+        points += 6
+        marqueur = 20
+        while marqueur in jeu["Atouts"]:
+            points += 2
+            marqueur -= 1
+    for i in couleurs[1:]:
+        if 14 in jeu[i]:
+            if 13 in jeu[i]:
+                points += 11
+            else:
+                points += 6
+        elif 13 in jeu[i] and 12 in jeu[i]:
+            points += 5
+    points += faiblesses[0] * 8
+    points += faiblesses[1] * 6
+    return points
+
+def contrat(jeu):
+    bouts = nombre_bouts(jeu)
+    atouts = nombre_atouts(jeu)
+    points = compter_habilles(jeu)
+    atouts_necessaires = {0: 8, 1: 7, 2: 7, 3: 6}
+    points_necessaires = {0: 15, 1: 10, 2: 8, 3: 5}
+    points_ = compter_points(jeu)
+    but = {0: 56, 1: 51, 2: 41, 3: 36}
+    but = but[nombre_bouts(jeu)]
+    points_ = points_ - but
+    if points_ >= 0:
+        return "Garde Contre"
+    elif points_ >= -3:
+        return "Garde Sans"
+    else:
+        if atouts < atouts_necessaires[bouts]-1:
+            return "Passe"
+        elif atouts < atouts_necessaires[bouts]:
+            if points > points_necessaires[bouts]:
+                return "Petite"
+            else:
+                return "Passe"
+        else:
+            if points > points_necessaires[bouts] - 5:
+                return "Garde"
+            else:
+                return "Passe"
+
+def preneur(jeu, entame):
+    contrats = {"Passe": 0, "Petite": 1, "Garde": 2, "Garde Sans": 3, "Garde Contre": 4}
+    attaque = ("Passe", 0)
+    for i in [entame, (entame+1)%4, (entame+2)%4, (entame+3)%4]:
+        prendre = contrat(jeu[i])
+        if contrats[prendre] > contrats[attaque[0]]:
+            attaque = (prendre, i+1)
+    return attaque
+
+def lancer_partie():
+    jeu = creer_jeu()
+    jeu = melanger_jeu(jeu)
+    jeu = distribuer(jeu)
+    for i in range(5):
+        jeu[i] = trier_jeu(jeu[i])
+        afficher(jeu[i])
+    return preneur(jeu[:5], randint(0, 3))
+
+print(lancer_partie())
